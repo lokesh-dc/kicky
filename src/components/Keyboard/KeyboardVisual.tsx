@@ -101,15 +101,12 @@ const GRADIENT_SHAPE = [4, 3, 2, 1]; // keys per row, shrinking
 interface KeyboardVisualProps {
   /** When true, keys fly apart from the board (dismantle) and hover */
   scattered?: boolean;
-  /** Always show printed legends (a11y/demo). Off = blank caps like the reference */
-  showLegends?: boolean;
   /** Fired when a key is clicked/tapped (code) — e.g. to play a sound */
   onKeyPress?: (code: string) => void;
 }
 
 export default function KeyboardVisual({
   scattered = false,
-  showLegends = false,
   onKeyPress,
 }: KeyboardVisualProps) {
   const [pressed, setPressed] = useState<Set<string>>(new Set());
@@ -199,7 +196,6 @@ export default function KeyboardVisual({
           <div key={r} className={styles.row}>
             {row.map((k, c) => {
               const isPressed = pressed.has(k.code);
-              const showLabel = showLegends || isPressed;
               return (
                 <div
                   key={k.code}
@@ -220,8 +216,8 @@ export default function KeyboardVisual({
                 >
                   <div className={styles.keyFront} />
                   <div className={styles.keyTop}>
-                    {k.sub && showLabel && <span className={styles.sub}>{k.sub}</span>}
-                    {k.label && showLabel && <span className={styles.label}>{k.label}</span>}
+                    {k.sub && <span className={styles.sub}>{k.sub}</span>}
+                    {k.label && <span className={styles.label}>{k.label}</span>}
                   </div>
                 </div>
               );

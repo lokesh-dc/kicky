@@ -4,7 +4,7 @@
     "default": true,
     "key_define_type": "multi",
     "includes_numpad": false,
-    "sound": "sound.ogg",
+    "sound": "a.wav",
     "defines": {
         "1": "q.wav",
         "2": "w.wav",

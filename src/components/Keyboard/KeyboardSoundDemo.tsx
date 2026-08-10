@@ -23,7 +23,6 @@ export default function KeyboardSoundDemo() {
   const [packPath, setPackPath] = useState(AVAILABLE_PACKS[0].path);
   const [volume, setVolume] = useState(0.8);
   const [enabled, setEnabled] = useState(true);
-  const [showLegends, setShowLegends] = useState(false);
   const [scattered, setScattered] = useState(false);
   const [status, setStatus] = useState<Status>("idle");
   const timerRef = useRef<number | undefined>(undefined);
@@ -122,7 +121,6 @@ export default function KeyboardSoundDemo() {
       <main style={styles.stage}>
         <KeyboardVisual
           scattered={scattered}
-          showLegends={showLegends}
           onKeyPress={(code) => playCode(code, "down")}
         />
       </main>
@@ -156,21 +154,7 @@ export default function KeyboardSoundDemo() {
           />
         </label>
 
-        <label style={styles.control}>
-          <span style={styles.controlLabel}>Legends</span>
-          <button
-            onClick={() => setShowLegends((v) => !v)}
-            style={{
-              ...styles.legendToggle,
-              background: showLegends ? "#2dd9e8" : "#1e1b33",
-              color: showLegends ? "#04323d" : "#94a3b8",
-            }}
-            aria-pressed={showLegends}
-          >
-            {showLegends ? "Shown" : "Hidden"}
-          </button>
-        </label>
-      </div>
+        </div>
 
       <p style={styles.hint}>
         Type or click any key — it depresses and glows coral. Keys fly apart and back together
@@ -275,16 +259,6 @@ const styles: Record<string, React.CSSProperties> = {
     accentColor: "#ff6b4a",
     cursor: "pointer",
     alignSelf: "flex-start",
-  },
-  legendToggle: {
-    border: "1px solid rgba(255, 255, 255, 0.2)",
-    borderRadius: 12,
-    padding: "12px 16px",
-    fontSize: 14,
-    fontWeight: 600,
-    cursor: "pointer",
-    textAlign: "left",
-    transition: "all 0.2s",
   },
   hint: {
     textAlign: "center",
