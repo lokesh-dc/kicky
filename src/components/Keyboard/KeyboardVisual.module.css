@@ -73,6 +73,10 @@
   height: 5.4cqi;
   transform-style: preserve-3d;
   transform: translateZ(0);
+  /* Keeps keycaps above the case bezel while the board's filter (a grouping
+     property that flattens its 3D context) is applied or fading out. Ignored
+     by the browser in the pristine 3D state, where Z-order rules instead. */
+  z-index: 1;
   transition:
     transform 460ms cubic-bezier(0.2, 0.75, 0.25, 1),
     opacity 200ms ease;
@@ -83,7 +87,7 @@
 
 /* Dismantled keys: fly out radially, spin slightly and hover */
 .boardScattered .key {
-  transform: translate3d(var(--sx), var(--sy), calc(-1 * var(--depth) * 2))
+  transform: translate3d(var(--sx), var(--sy), calc(var(--depth) * 2))
     rotate(var(--sr));
   opacity: 0.9;
   animation: keyHover 1.6s ease-in-out infinite alternate;
@@ -149,7 +153,7 @@
 }
 
 .boardScattered .keyPressed {
-  transform: translate3d(var(--sx), var(--sy), calc(-1 * var(--depth) * 2))
+  transform: translate3d(var(--sx), var(--sy), calc(var(--depth) * 2))
     rotate(var(--sr));
 }
 
