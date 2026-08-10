@@ -145,7 +145,22 @@ export class SoundPack {
     const pattern = phase === "up" ? this.config.soundup : this.config.sound;
     if (!pattern) return;
     const filename = resolveRangeToken(pattern);
-    this.playFile(filename, volume);
+    // If the pack's declared generic file is missing (e.g. NK Cream declares
+    // sound.ogg but ships only per-key wavs), degrade to any cached sample.
+    if (this.fileCache.has(filename)) {
+      this.playFile(filename, volume);
+      return;
+    }
+    const first = this.fileCache.values().next().value as AudioBuffer | undefined;
+    if (first) {
+      const source = this.ctx.createBufferSource();
+      source.buffer = first;
+      const gain = this.ctx.createGain();
+      gain.gain.value = volume;
+      source.connect(gain);
+      gain.connect(this.ctx.destination);
+      source.start();
+    }
   }
 
   private playSpriteSlice(offsetMs: number, durationMs: number, volume: number) {

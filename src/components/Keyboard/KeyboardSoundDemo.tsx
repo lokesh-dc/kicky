@@ -1,21 +1,32 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useKeyboardSound } from "./useKeyboardSound";
+import KeyboardVisual from "./KeyboardVisual";
+
+interface PackDef {
+  path: string;
+  label: string;
+}
 
 // Add more entries here as you download/unzip more packs into /public/soundpacks/
-const AVAILABLE_PACKS = [
-  { path: "/soundpacks/cherrymx-blue-abs", label: "Cherry MX Blue ABS", color: "#94a3b8" },
-  { path: "/soundpacks/cherrymx-blue-abs-2", label: "Cherry MX Blue ABS 2", color: "#94a3b8" },
-  { path: "/soundpacks/eg-oreo", label: "EG Oreo", color: "#94a3b8" },
-  { path: "/soundpacks/nk-cream", label: "NK Cream", color: "#fde68a" },
+const AVAILABLE_PACKS: PackDef[] = [
+  { path: "/soundpacks/cherrymx-blue-abs", label: "Cherry MX Blue ABS" },
+  { path: "/soundpacks/cherrymx-blue-abs-2", label: "Cherry MX Blue ABS 2" },
+  { path: "/soundpacks/eg-oreo", label: "EG Oreo" },
+  { path: "/soundpacks/nk-cream", label: "NK Cream" },
 ];
+
+type Status = "idle" | "dismantling" | "loading";
 
 export default function KeyboardSoundDemo() {
   const [packPath, setPackPath] = useState(AVAILABLE_PACKS[0].path);
   const [volume, setVolume] = useState(0.8);
   const [enabled, setEnabled] = useState(true);
-  const [keyCount, setKeyCount] = useState(0);
+  const [showLegends, setShowLegends] = useState(false);
+  const [scattered, setScattered] = useState(false);
+  const [status, setStatus] = useState<Status>("idle");
+  const timerRef = useRef<number | undefined>(undefined);
 
   const { playCode, isReady, error } = useKeyboardSound({
     packPath,
@@ -23,112 +34,148 @@ export default function KeyboardSoundDemo() {
     enabled,
   });
 
-  const activePack = AVAILABLE_PACKS.find((p) => p.path === packPath)!;
+  const selected = AVAILABLE_PACKS.find((p) => p.path === packPath)!;
 
-  const handleTestPress = () => {
-    playCode("Space", "down");
-    setKeyCount((c) => c + 1);
+  // Dismantle -> load -> reassemble when the pack selection changes
+  const handlePackChange = (path: string) => {
+    if (path === packPath || status !== "idle") return;
+    const next = AVAILABLE_PACKS.find((p) => p.path === path);
+    if (!next) return;
+    setStatus("dismantling");
+    setScattered(true);
+    timerRef.current = window.setTimeout(() => {
+      setPackPath(next.path);
+      setStatus("loading");
+    }, 620);
   };
+
+  // Once the new soundpack is ready, bring the keys back together.
+  // Gated on status === "loading" so the old pack staying ready during
+  // "dismantling" doesn't prematurely re-assemble the keys.
+  useEffect(() => {
+    if (status !== "loading" || !isReady || !scattered) return;
+    const t = window.setTimeout(() => {
+      setScattered(false);
+      setStatus("idle");
+    }, 250);
+    return () => window.clearTimeout(t);
+  }, [status, isReady, scattered]);
+
+  useEffect(() => {
+    if (status === "loading" && error) {
+      setScattered(false);
+      setStatus("idle");
+    }
+  }, [status, error]);
+
+  useEffect(() => () => window.clearTimeout(timerRef.current), []);
+
+  const statusText =
+    status === "dismantling"
+      ? "Dismantling…"
+      : status === "loading"
+        ? error
+          ? "Failed to load pack"
+          : `Loading ${selected.label}…`
+        : isReady
+          ? `${selected.label} · ready`
+          : "Loading…";
 
   return (
     <div style={styles.page}>
       <header style={styles.header}>
-        <div style={styles.logo}>⌨️</div>
-        <h1 style={styles.title}>Klack</h1>
-        <p style={styles.subtitle}>
-          {isReady
-            ? "Real mechanical keyboard samples, playing in your browser"
-            : error
-              ? `Failed to load pack: ${error}`
-              : "Loading soundpack…"}
-        </p>
+        <div style={styles.brand}>
+          <span style={styles.brandLogo}>⌨️</span>
+          <span style={styles.brandName}>klicky</span>
+        </div>
+
+        <div style={styles.statusPill}>
+          <span
+            style={{
+              ...styles.statusDot,
+              background:
+                status === "idle"
+                  ? isReady
+                    ? "#4ade80"
+                    : "#facc15"
+                  : "#ff6b4a",
+            }}
+          />
+          <span style={styles.statusText}>{statusText}</span>
+        </div>
+
+        <div style={styles.headerRight}>
+          <button
+            onClick={() => setEnabled((e) => !e)}
+            style={{
+              ...styles.toggle,
+              background: enabled ? "#ff6b4a" : "#1e293b",
+              boxShadow: enabled ? "0 0 18px #ff6b4a66" : "none",
+            }}
+            aria-pressed={enabled}
+          >
+            {enabled ? "🔊 Sound On" : "🔇 Sound Off"}
+          </button>
+        </div>
       </header>
 
-      <div style={styles.toggleRow}>
-        <button
-          onClick={() => setEnabled((e) => !e)}
-          style={{
-            ...styles.toggle,
-            background: enabled ? "#6d28d9" : "#1e293b",
-            boxShadow: enabled ? "0 0 16px #6d28d980" : "none",
-          }}
-        >
-          {enabled ? "🔊 Sound On" : "🔇 Sound Off"}
-        </button>
-        <span style={styles.keyCount}>{keyCount.toLocaleString()} keys pressed</span>
+      <main style={styles.stage}>
+        <KeyboardVisual
+          scattered={scattered}
+          showLegends={showLegends}
+          onKeyPress={(code) => playCode(code, "down")}
+        />
+      </main>
+
+      <div style={styles.controls}>
+        <label style={styles.control}>
+          <span style={styles.controlLabel}>Sound pack</span>
+          <select
+            value={packPath}
+            onChange={(e) => handlePackChange(e.target.value)}
+            style={styles.select}
+          >
+            {AVAILABLE_PACKS.map((p) => (
+              <option key={p.path} value={p.path}>
+                {p.label}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label style={styles.control}>
+          <span style={styles.controlLabel}>Volume — {Math.round(volume * 100)}%</span>
+          <input
+            type="range"
+            min={0}
+            max={1}
+            step={0.01}
+            value={volume}
+            onChange={(e) => setVolume(parseFloat(e.target.value))}
+            style={styles.slider}
+          />
+        </label>
+
+        <label style={styles.control}>
+          <span style={styles.controlLabel}>Legends</span>
+          <button
+            onClick={() => setShowLegends((v) => !v)}
+            style={{
+              ...styles.legendToggle,
+              background: showLegends ? "#2dd9e8" : "#1e1b33",
+              color: showLegends ? "#04323d" : "#94a3b8",
+            }}
+            aria-pressed={showLegends}
+          >
+            {showLegends ? "Shown" : "Hidden"}
+          </button>
+        </label>
       </div>
 
-      {/* Pack selector */}
-      <section style={styles.section}>
-        <h2 style={styles.sectionLabel}>Sound Pack</h2>
-        <div style={styles.switchGrid}>
-          {AVAILABLE_PACKS.map((pack) => (
-            <button
-              key={pack.path}
-              onClick={() => setPackPath(pack.path)}
-              style={{
-                ...styles.switchBtn,
-                borderColor: packPath === pack.path ? pack.color : "transparent",
-                background: packPath === pack.path ? `${pack.color}18` : "#0f172a",
-                boxShadow: packPath === pack.path ? `0 0 12px ${pack.color}40` : "none",
-              }}
-            >
-              <span style={{ ...styles.dot, background: pack.color }} />
-              <span style={styles.switchName}>{pack.label}</span>
-            </button>
-          ))}
-        </div>
-        <p style={styles.hint}>
-          Drop more packs into <code>/public/soundpacks/&lt;name&gt;</code> and add them to{" "}
-          <code>AVAILABLE_PACKS</code> in this file.
-        </p>
-      </section>
-
-      {/* Volume */}
-      <section style={styles.section}>
-        <h2 style={styles.sectionLabel}>Volume — {Math.round(volume * 100)}%</h2>
-        <input
-          type="range"
-          min={0}
-          max={1}
-          step={0.01}
-          value={volume}
-          onChange={(e) => setVolume(parseFloat(e.target.value))}
-          style={styles.slider}
-        />
-      </section>
-
-      {/* Test pad */}
-      <section style={styles.section}>
-        <h2 style={styles.sectionLabel}>Test It</h2>
-        <p style={styles.hint}>Type anywhere on the page, or tap the button below.</p>
-        <button
-          onMouseDown={handleTestPress}
-          disabled={!isReady}
-          style={{
-            ...styles.bigKey,
-            borderColor: activePack.color,
-            opacity: isReady ? 1 : 0.5,
-            boxShadow: `0 6px 0 ${activePack.color}60, 0 0 20px ${activePack.color}30`,
-          }}
-        >
-          <span style={styles.bigKeyLabel}>SPACE</span>
-          <span style={styles.bigKeyHint}>{isReady ? "tap or press any key" : "loading…"}</span>
-        </button>
-      </section>
-
-      {/* Usage snippet */}
-      <section style={styles.section}>
-        <h2 style={styles.sectionLabel}>Usage in your project</h2>
-        <pre style={styles.code}>{`import { useKeyboardSound } from "@/lib/useKeyboardSound";
-
-// Plays real sampled clicks on every keydown, globally
-const { isReady } = useKeyboardSound({
-  packPath: "${packPath}",
-  volume: ${volume.toFixed(2)},
-  enabled: true,
-});`}</pre>
-      </section>
+      <p style={styles.hint}>
+        Type or click any key — it depresses and glows coral. Keys fly apart and back together
+        when you switch packs.
+      </p>
     </div>
   );
 }
@@ -136,96 +183,113 @@ const { isReady } = useKeyboardSound({
 const styles: Record<string, React.CSSProperties> = {
   page: {
     minHeight: "100vh",
-    background: "#020617",
+    background:
+      "radial-gradient(ellipse at 12% 100%, rgba(255, 0, 180, 0.28), transparent 55%), linear-gradient(135deg, #3f7ca0 0%, #5b3e8f 48%, #1b1233 100%)",
     color: "#e2e8f0",
     fontFamily: "'Inter', system-ui, sans-serif",
-    padding: "40px 24px 80px",
-    maxWidth: 680,
-    margin: "0 auto",
+    padding: "20px clamp(16px, 4vw, 64px) 64px",
+    display: "flex",
+    flexDirection: "column",
   },
-  header: { textAlign: "center", marginBottom: 48 },
-  logo: { fontSize: 48, marginBottom: 12 },
-  title: {
-    fontSize: 36,
+  header: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 16,
+    paddingBottom: 18,
+    borderBottom: "1px solid rgba(255, 255, 255, 0.12)",
+  },
+  brand: { display: "flex", alignItems: "center", gap: 10 },
+  brandLogo: { fontSize: 26 },
+  brandName: {
+    fontSize: 24,
     fontWeight: 800,
-    letterSpacing: "-1px",
-    margin: "0 0 8px",
-    background: "linear-gradient(135deg, #a78bfa, #60a5fa)",
+    letterSpacing: "-0.5px",
+    background: "linear-gradient(135deg, #ffb3d9, #c4b5fd)",
     WebkitBackgroundClip: "text",
     WebkitTextFillColor: "transparent",
   },
-  subtitle: { color: "#64748b", margin: 0, fontSize: 15 },
-  toggleRow: {
+  statusPill: {
     display: "flex",
     alignItems: "center",
-    gap: 16,
-    marginBottom: 40,
-    justifyContent: "center",
+    gap: 8,
+    background: "rgba(255, 255, 255, 0.08)",
+    border: "1px solid rgba(255, 255, 255, 0.15)",
+    padding: "7px 14px",
+    borderRadius: 999,
   },
+  statusDot: { width: 8, height: 8, borderRadius: "50%", flexShrink: 0 },
+  statusText: { fontSize: 12, color: "#e2e8f0", fontWeight: 600 },
+  headerRight: { display: "flex", alignItems: "center", gap: 14 },
   toggle: {
     border: "none",
     color: "#fff",
-    padding: "10px 22px",
+    padding: "10px 20px",
     borderRadius: 999,
     fontWeight: 600,
-    fontSize: 14,
+    fontSize: 13,
     cursor: "pointer",
     transition: "all 0.2s",
     letterSpacing: "0.3px",
+    whiteSpace: "nowrap",
   },
-  keyCount: { color: "#475569", fontSize: 13 },
-  section: { marginBottom: 40 },
-  sectionLabel: {
+  stage: {
+    flex: 1,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: "clamp(24px, 5vh, 64px) 0",
+    width: "100%",
+    maxWidth: 1200,
+    margin: "0 auto",
+  },
+  controls: {
+    display: "flex",
+    alignItems: "flex-end",
+    justifyContent: "center",
+    gap: "clamp(16px, 4vw, 48px)",
+    flexWrap: "wrap",
+    padding: "0 0 8px",
+  },
+  control: { display: "flex", flexDirection: "column", gap: 8, minWidth: 220 },
+  controlLabel: {
     fontSize: 11,
     fontWeight: 700,
     letterSpacing: "1.5px",
     textTransform: "uppercase",
-    color: "#64748b",
-    marginBottom: 16,
+    color: "rgba(255, 255, 255, 0.55)",
   },
-  switchGrid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 },
-  switchBtn: {
-    display: "flex",
-    alignItems: "center",
-    gap: 12,
-    padding: "14px 16px",
+  select: {
+    background: "rgba(27, 18, 51, 0.7)",
+    color: "#e2e8f0",
+    border: "1px solid rgba(255, 255, 255, 0.2)",
     borderRadius: 12,
-    border: "1.5px solid",
+    padding: "12px 16px",
+    fontSize: 14,
+    fontWeight: 600,
+    cursor: "pointer",
+    outline: "none",
+  },
+  slider: {
+    width: "100%",
+    accentColor: "#ff6b4a",
+    cursor: "pointer",
+    alignSelf: "flex-start",
+  },
+  legendToggle: {
+    border: "1px solid rgba(255, 255, 255, 0.2)",
+    borderRadius: 12,
+    padding: "12px 16px",
+    fontSize: 14,
+    fontWeight: 600,
     cursor: "pointer",
     textAlign: "left",
-    transition: "all 0.15s",
-    color: "#e2e8f0",
+    transition: "all 0.2s",
   },
-  dot: { width: 12, height: 12, borderRadius: "50%", flexShrink: 0 },
-  switchName: { fontWeight: 600, fontSize: 13 },
-  slider: { width: "100%", accentColor: "#6d28d9", cursor: "pointer" },
-  hint: { color: "#64748b", fontSize: 13, marginTop: 10, lineHeight: 1.6 },
-  bigKey: {
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    justifyContent: "center",
-    width: "100%",
-    padding: "28px 0",
-    background: "#0f172a",
-    border: "1.5px solid",
-    borderRadius: 16,
-    cursor: "pointer",
-    transition: "transform 0.08s, box-shadow 0.08s",
-    color: "#e2e8f0",
-    gap: 6,
-  },
-  bigKeyLabel: { fontSize: 20, fontWeight: 800, letterSpacing: "4px" },
-  bigKeyHint: { fontSize: 11, color: "#475569" },
-  code: {
-    background: "#0f172a",
-    border: "1px solid #1e293b",
-    borderRadius: 12,
-    padding: "20px 24px",
-    fontSize: 12,
-    lineHeight: 1.7,
-    overflowX: "auto",
-    color: "#a5f3fc",
-    whiteSpace: "pre",
+  hint: {
+    textAlign: "center",
+    color: "rgba(255, 255, 255, 0.55)",
+    fontSize: 13,
+    marginTop: 8,
   },
 };

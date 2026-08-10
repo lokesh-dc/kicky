@@ -40,6 +40,7 @@ export function useKeyboardSound({
                 if (!cancelled) setReadyFor(packPath);
             })
             .catch((err) => {
+                console.log("[hook] load failed", packPath, err);
                 if (!cancelled)
                     setErrorFor({
                         path: packPath,
