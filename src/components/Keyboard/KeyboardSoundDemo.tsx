@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useKeyboardSound } from "./useKeyboardSound";
 import KeyboardVisual from "./KeyboardVisual";
 
@@ -9,7 +9,6 @@ interface PackDef {
   label: string;
 }
 
-// Add more entries here as you download/unzip more packs into /public/soundpacks/
 const AVAILABLE_PACKS: PackDef[] = [
   { path: "/soundpacks/cherrymx-blue-abs", label: "Cherry MX Blue ABS" },
   { path: "/soundpacks/cherrymx-blue-abs-2", label: "Cherry MX Blue ABS 2" },
@@ -17,25 +16,47 @@ const AVAILABLE_PACKS: PackDef[] = [
   { path: "/soundpacks/nk-cream", label: "NK Cream" },
 ];
 
+const QUOTES = [
+  "The quick brown fox jumps over the lazy dog.",
+  "Pack my box with five dozen liquor jugs.",
+  "How vexingly quick daft zebras jump.",
+  "The five boxing wizards jump quickly.",
+  "Sphinx of black quartz, judge my vow.",
+  "Two driven jocks help fax my big quiz.",
+  "The jay, pig, fox, zebra, and my wolves quack!",
+  "Jived fox nymph grabs quick waltz.",
+  "Jackdaws love my big sphinx of quartz.",
+  "Crazy Frederick bought many very exquisite opal jewels.",
+];
+
 type Status = "idle" | "dismantling" | "loading";
 
 export default function KeyboardSoundDemo() {
   const [packPath, setPackPath] = useState(AVAILABLE_PACKS[0].path);
   const [volume, setVolume] = useState(0.8);
-  const [enabled, setEnabled] = useState(true);
   const [scattered, setScattered] = useState(false);
   const [status, setStatus] = useState<Status>("idle");
   const timerRef = useRef<number | undefined>(undefined);
 
+  const [quoteIndex, setQuoteIndex] = useState(0);
+  const [typedCount, setTypedCount] = useState(0);
+  const [startTime, setStartTime] = useState<number | null>(null);
+  const [wpm, setWpm] = useState(0);
+
+  const [volumeOpen, setVolumeOpen] = useState(false);
+  const volumeRef = useRef<HTMLDivElement>(null);
+
+  const quote = QUOTES[quoteIndex];
+
   const { playCode, isReady, error } = useKeyboardSound({
     packPath,
     volume,
-    enabled,
+    enabled: true,
+    globalListener: false,
   });
 
   const selected = AVAILABLE_PACKS.find((p) => p.path === packPath)!;
 
-  // Dismantle -> load -> reassemble when the pack selection changes
   const handlePackChange = (path: string) => {
     if (path === packPath || status !== "idle") return;
     const next = AVAILABLE_PACKS.find((p) => p.path === path);
@@ -48,9 +69,6 @@ export default function KeyboardSoundDemo() {
     }, 620);
   };
 
-  // Once the new soundpack is ready, bring the keys back together.
-  // Gated on status === "loading" so the old pack staying ready during
-  // "dismantling" doesn't prematurely re-assemble the keys.
   useEffect(() => {
     if (status !== "loading" || !isReady || !scattered) return;
     const t = window.setTimeout(() => {
@@ -69,23 +87,80 @@ export default function KeyboardSoundDemo() {
 
   useEffect(() => () => window.clearTimeout(timerRef.current), []);
 
-  const statusText =
-    status === "dismantling"
-      ? "Dismantling…"
-      : status === "loading"
-        ? error
-          ? "Failed to load pack"
-          : `Loading ${selected.label}…`
-        : isReady
-          ? `${selected.label} · ready`
-          : "Loading…";
+  // Close volume popup on outside click
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (volumeRef.current && !volumeRef.current.contains(e.target as Node)) {
+        setVolumeOpen(false);
+      }
+    };
+    if (volumeOpen) document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [volumeOpen]);
+
+  const handleTypingKeyDown = useCallback(
+    (e: KeyboardEvent) => {
+      if (status !== "idle") return;
+      if (volumeOpen && (e.key === "Escape" || e.key === "Tab")) {
+        setVolumeOpen(false);
+        return;
+      }
+      if (volumeOpen) return;
+
+      if (e.key === "Escape" || e.key === "Tab") {
+        e.preventDefault();
+        return;
+      }
+
+      if (e.key === "Backspace") {
+        e.preventDefault();
+        setTypedCount((c) => Math.max(0, c - 1));
+        return;
+      }
+
+      if (e.key.length !== 1) return;
+
+      if (typedCount >= quote.length) return;
+
+      if (!startTime) setStartTime(Date.now());
+
+      playCode(e.code, "down");
+
+      if (quote[typedCount] === e.key) {
+        const next = typedCount + 1;
+        setTypedCount(next);
+
+        if (next >= quote.length) {
+          const elapsed = (Date.now() - (startTime ?? Date.now())) / 1000;
+          const words = quote.split(" ").length;
+          setWpm(Math.round((words / elapsed) * 60));
+          setTimeout(() => {
+            setQuoteIndex((i) => (i + 1) % QUOTES.length);
+            setTypedCount(0);
+            setStartTime(null);
+          }, 1200);
+        }
+      }
+    },
+    [typedCount, quote, startTime, status, volumeOpen, playCode]
+  );
+
+  useEffect(() => {
+    window.addEventListener("keydown", handleTypingKeyDown);
+    return () => window.removeEventListener("keydown", handleTypingKeyDown);
+  }, [handleTypingKeyDown]);
+
+  const elapsed = startTime ? (Date.now() - startTime) / 1000 : 0;
+  const liveWpm =
+    startTime && typedCount > 0
+      ? Math.round((typedCount / 5 / elapsed) * 60)
+      : 0;
 
   return (
     <div style={styles.page}>
       <header style={styles.header}>
         <div style={styles.brand}>
-          <span style={styles.brandLogo}>⌨️</span>
-          <span style={styles.brandName}>klicky</span>
+          <span style={styles.brandName}>Klicky</span>
         </div>
 
         <div style={styles.statusPill}>
@@ -100,38 +175,10 @@ export default function KeyboardSoundDemo() {
                   : "#ff6b4a",
             }}
           />
-          <span style={styles.statusText}>{statusText}</span>
-        </div>
-
-        <div style={styles.headerRight}>
-          <button
-            onClick={() => setEnabled((e) => !e)}
-            style={{
-              ...styles.toggle,
-              background: enabled ? "#ff6b4a" : "#1e293b",
-              boxShadow: enabled ? "0 0 18px #ff6b4a66" : "none",
-            }}
-            aria-pressed={enabled}
-          >
-            {enabled ? "🔊 Sound On" : "🔇 Sound Off"}
-          </button>
-        </div>
-      </header>
-
-      <main style={styles.stage}>
-        <KeyboardVisual
-          scattered={scattered}
-          onKeyPress={(code) => playCode(code, "down")}
-        />
-      </main>
-
-      <div style={styles.controls}>
-        <label style={styles.control}>
-          <span style={styles.controlLabel}>Sound pack</span>
           <select
             value={packPath}
             onChange={(e) => handlePackChange(e.target.value)}
-            style={styles.select}
+            style={styles.packSelect}
           >
             {AVAILABLE_PACKS.map((p) => (
               <option key={p.path} value={p.path}>
@@ -139,27 +186,103 @@ export default function KeyboardSoundDemo() {
               </option>
             ))}
           </select>
-        </label>
-
-        <label style={styles.control}>
-          <span style={styles.controlLabel}>Volume — {Math.round(volume * 100)}%</span>
-          <input
-            type="range"
-            min={0}
-            max={1}
-            step={0.01}
-            value={volume}
-            onChange={(e) => setVolume(parseFloat(e.target.value))}
-            style={styles.slider}
-          />
-        </label>
-
         </div>
 
-      <p style={styles.hint}>
-        Type or click any key — it depresses and glows coral. Keys fly apart and back together
-        when you switch packs.
-      </p>
+        <div style={styles.headerRight} ref={volumeRef}>
+          <div style={{ position: "relative" }}>
+            <button
+              onClick={() => setVolumeOpen((o) => !o)}
+              style={styles.iconBtn}
+              title="Volume"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M3 9v6h4l5 5V4L7 9H3z" fill="white" />
+                {volume === 0 ? (
+                  <>
+                    <line x1="23" y1="9" x2="17" y2="15" stroke="white" strokeWidth="2" strokeLinecap="round" />
+                    <line x1="17" y1="9" x2="23" y2="15" stroke="white" strokeWidth="2" strokeLinecap="round" />
+                  </>
+                ) : (
+                  <>
+                    {volume > 0.15 && (
+                      <path d="M14.5 8.5a5 5 0 0 1 0 7" stroke="white" strokeWidth="2" strokeLinecap="round" />
+                    )}
+                    {volume > 0.5 && (
+                      <path d="M17.5 5.5a10 10 0 0 1 0 13" stroke="white" strokeWidth="2" strokeLinecap="round" />
+                    )}
+                  </>
+                )}
+              </svg>
+            </button>
+            {volumeOpen && (
+              <div style={styles.volumePopup}>
+                <div style={styles.volumeSliderTrack}>
+                  <input
+                    type="range"
+                    min={0}
+                    max={1}
+                    step={0.01}
+                    value={volume}
+                    onChange={(e) => setVolume(parseFloat(e.target.value))}
+                    style={styles.verticalSlider}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </header>
+
+      <div style={styles.typingArea}>
+        <div style={styles.quoteBox}>
+          {quote.split("").map((char, i) => (
+            <span
+              key={i}
+              style={{
+                ...styles.quoteChar,
+                color:
+                  i < typedCount
+                    ? quote[i] === char
+                      ? "#ffffff"
+                      : "#ff6b4a"
+                    : "rgba(255,255,255,0.25)",
+                textShadow:
+                  i < typedCount && quote[i] === char
+                    ? "0 0 8px rgba(255,255,255,0.3)"
+                    : "none",
+              }}
+            >
+              {char === " " ? "\u00A0" : char}
+              {i === typedCount - 1 && <span style={styles.cursor}>|</span>}
+            </span>
+          ))}
+          {typedCount === 0 && <span style={styles.cursor}>|</span>}
+        </div>
+        <div style={styles.typingStats}>
+          <span style={styles.stat}>
+            WPM{" "}
+            <strong>{startTime ? liveWpm : 0}</strong>
+          </span>
+          {wpm > 0 && typedCount >= quote.length && (
+            <span style={{ ...styles.stat, color: "#4ade80" }}>
+              Done! {wpm} WPM
+            </span>
+          )}
+          <span style={styles.stat}>
+            Progress{" "}
+            <strong>
+              {Math.round((typedCount / quote.length) * 100)}%
+            </strong>
+          </span>
+        </div>
+      </div>
+
+      <main style={styles.stage}>
+        <KeyboardVisual
+          scattered={scattered}
+          onKeyPress={(code) => playCode(code, "down")}
+        />
+      </main>
     </div>
   );
 }
@@ -182,6 +305,8 @@ const styles: Record<string, React.CSSProperties> = {
     gap: 16,
     paddingBottom: 18,
     borderBottom: "1px solid rgba(255, 255, 255, 0.12)",
+    position: "relative" as const,
+    zIndex: 50,
   },
   brand: { display: "flex", alignItems: "center", gap: 10 },
   brandLogo: { fontSize: 26 },
@@ -203,67 +328,136 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: 999,
   },
   statusDot: { width: 8, height: 8, borderRadius: "50%", flexShrink: 0 },
-  statusText: { fontSize: 12, color: "#e2e8f0", fontWeight: 600 },
-  headerRight: { display: "flex", alignItems: "center", gap: 14 },
-  toggle: {
-    border: "none",
-    color: "#fff",
-    padding: "10px 20px",
-    borderRadius: 999,
-    fontWeight: 600,
-    fontSize: 13,
-    cursor: "pointer",
-    transition: "all 0.2s",
-    letterSpacing: "0.3px",
-    whiteSpace: "nowrap",
-  },
-  stage: {
-    flex: 1,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: "clamp(24px, 5vh, 64px) 0",
-    width: "100%",
-    maxWidth: 1200,
-    margin: "0 auto",
-  },
-  controls: {
-    display: "flex",
-    alignItems: "flex-end",
-    justifyContent: "center",
-    gap: "clamp(16px, 4vw, 48px)",
-    flexWrap: "wrap",
-    padding: "0 0 8px",
-  },
-  control: { display: "flex", flexDirection: "column", gap: 8, minWidth: 220 },
-  controlLabel: {
-    fontSize: 11,
-    fontWeight: 700,
-    letterSpacing: "1.5px",
-    textTransform: "uppercase",
-    color: "rgba(255, 255, 255, 0.55)",
-  },
-  select: {
-    background: "rgba(27, 18, 51, 0.7)",
+  packSelect: {
+    background: "transparent",
     color: "#e2e8f0",
-    border: "1px solid rgba(255, 255, 255, 0.2)",
-    borderRadius: 12,
-    padding: "12px 16px",
-    fontSize: 14,
+    border: "none",
+    borderRadius: 0,
+    padding: "0 16px 0 0",
+    fontSize: 12,
     fontWeight: 600,
     cursor: "pointer",
     outline: "none",
+    appearance: "none" as const,
+    WebkitAppearance: "none" as const,
+    backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23e2e8f0'/%3E%3C/svg%3E")`,
+    backgroundRepeat: "no-repeat",
+    backgroundPosition: "right 0 center",
   },
-  slider: {
-    width: "100%",
+  headerRight: { display: "flex", alignItems: "center", gap: 8 },
+  iconBtn: {
+    background: "rgba(255, 255, 255, 0.08)",
+    border: "1px solid rgba(255, 255, 255, 0.15)",
+    color: "#fff",
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    cursor: "pointer",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    transition: "all 0.2s",
+  },
+  volumePopup: {
+    position: "absolute",
+    top: "calc(100% + 10px)",
+    right: -8,
+    background: "rgba(20, 12, 40, 0.97)",
+    border: "1px solid rgba(255, 255, 255, 0.2)",
+    borderRadius: 16,
+    padding: "20px 16px",
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    gap: 10,
+    backdropFilter: "blur(12px)",
+    zIndex: 200,
+    boxShadow: "0 8px 32px rgba(0,0,0,0.6)",
+  },
+  volumeSliderTrack: {
+    height: 140,
+    width: 40,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "visible",
+  },
+  verticalSlider: {
+    width: 120,
+    height: 6,
     accentColor: "#ff6b4a",
     cursor: "pointer",
-    alignSelf: "flex-start",
+    transform: "rotate(-90deg)",
+    transformOrigin: "center center",
+  },
+  typingArea: {
+    flex: 1,
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 16,
+    padding: "clamp(20px, 4vh, 48px) 0 0",
+    maxWidth: 900,
+    width: "100%",
+    margin: "0 auto",
+  },
+  quoteBox: {
+    fontFamily: "'Geist Mono', 'Fira Code', monospace",
+    fontSize: "clamp(18px, 2.5vw, 28px)",
+    lineHeight: 1.8,
+    letterSpacing: "1px",
+    padding: "24px 32px",
+    background: "rgba(255, 255, 255, 0.04)",
+    border: "1px solid rgba(255, 255, 255, 0.1)",
+    borderRadius: 20,
+    textAlign: "center" as const,
+    maxWidth: "100%",
+    wordBreak: "break-word" as const,
+    minHeight: 80,
+    display: "flex",
+    flexWrap: "wrap" as const,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  quoteChar: {
+    transition: "color 0.15s, text-shadow 0.15s, background 0.15s",
+    borderRadius: 4,
+    padding: "2px 1px",
+  },
+  cursor: {
+    display: "inline-block",
+    color: "#ff6b4a",
+    fontWeight: 300,
+    animation: "blink 1s step-end infinite",
+    marginLeft: 2,
+    fontSize: "1.1em",
+  },
+  typingStats: {
+    display: "flex",
+    gap: 24,
+    fontSize: 13,
+    color: "rgba(255,255,255,0.5)",
+    fontWeight: 600,
+  },
+  stat: {
+    display: "flex",
+    alignItems: "center",
+    gap: 6,
+  },
+  stage: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: "clamp(12px, 2vh, 32px) 0",
+    width: "100%",
+    maxWidth: 1200,
+    margin: "0 auto",
   },
   hint: {
     textAlign: "center",
     color: "rgba(255, 255, 255, 0.55)",
     fontSize: 13,
-    marginTop: 8,
+    marginTop: 4,
   },
 };

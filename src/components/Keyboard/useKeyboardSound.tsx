@@ -12,6 +12,8 @@ export interface UseKeyboardSoundOptions {
     enabled?: boolean;
     /** Also play a (usually quieter/different) sound on keyup, if the pack defines one */
     playOnKeyUp?: boolean;
+    /** Whether to attach global keydown/keyup listeners. Set false to only use playCode manually. */
+    globalListener?: boolean;
 }
 
 export function useKeyboardSound({
@@ -19,6 +21,7 @@ export function useKeyboardSound({
     volume = 0.8,
     enabled = true,
     playOnKeyUp = false,
+    globalListener = true,
 }: UseKeyboardSoundOptions) {
     const packRef = useRef<SoundPack | null>(null);
     const [readyFor, setReadyFor] = useState<string | null>(null);
@@ -70,7 +73,7 @@ export function useKeyboardSound({
 
     // Global keydown/keyup listeners
     useEffect(() => {
-        if (!enabled) return;
+        if (!enabled || !globalListener) return;
 
         const handleDown = (e: KeyboardEvent) => {
             if (e.repeat) return; // avoid spamming sounds during key-repeat
@@ -87,7 +90,7 @@ export function useKeyboardSound({
             window.removeEventListener("keydown", handleDown);
             if (playOnKeyUp) window.removeEventListener("keyup", handleUp);
         };
-    }, [enabled, playOnKeyUp, playCode]);
+    }, [enabled, globalListener, playOnKeyUp, playCode]);
 
     return { playCode, playClick, isReady, error };
 }
