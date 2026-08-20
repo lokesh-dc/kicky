@@ -10,7 +10,10 @@
   transform: rotateX(30deg);
   transform-origin: 50% 0%;
   transform-style: preserve-3d;
-  background: linear-gradient(180deg, #3a2c28 0%, #2b211f 55%, #1f1715 100%);
+  background: linear-gradient(180deg,
+      var(--plate, #3a2c28) 0%,
+      color-mix(in srgb, var(--plate, #3a2c28) 78%, #000000) 55%,
+      color-mix(in srgb, var(--plate, #3a2c28) 60%, #000000) 100%);
   border: 1px solid #120c0a;
   border-radius: calc(0.8cqi + 14px);
   padding: calc(1cqi + 8px);
@@ -41,7 +44,9 @@
   position: absolute;
   inset: calc(-1 * (0.45cqi + 3px));
   border-radius: inherit;
-  background: linear-gradient(180deg, #241a17, #0e0a08);
+  background: linear-gradient(180deg,
+      color-mix(in srgb, var(--plate, #241a17) 55%, #000000) 0%,
+      color-mix(in srgb, var(--plate, #241a17) 28%, #000000) 100%);
   transform: translateZ(calc(-1 * (1cqi + 6px)));
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
@@ -51,7 +56,10 @@
    intact — no filter, no overlay planes. */
 .boardScattered {
   transform: rotateX(10deg);
-  background: linear-gradient(180deg, #1c1411 0%, #14100e 55%, #0d0a09 100%);
+  background: linear-gradient(180deg,
+      color-mix(in srgb, var(--plate, #1c1411) 62%, #000000) 0%,
+      color-mix(in srgb, var(--plate, #14100e) 50%, #000000) 55%,
+      color-mix(in srgb, var(--plate, #0d0a09) 38%, #000000) 100%);
 }
 
 /* ── Keys ──────────────────────────────────────────────────────────── */
@@ -101,7 +109,7 @@
   }
 }
 
-/* Sculpted mauve-brown keycap top (default), dished with layered shadows */
+/* Sculpted keycap top (default), dished with layered shadows */
 .keyTop {
   position: absolute;
   inset: 0;
@@ -127,6 +135,60 @@
     border-color 100ms ease,
     color 140ms ease,
     box-shadow 140ms ease;
+}
+
+/* Soft light-source highlight on the top-left of the dish */
+.keyTop::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: radial-gradient(
+    130% 100% at 22% 8%,
+    rgba(255, 255, 255, 0.3) 0%,
+    rgba(255, 255, 255, 0.1) 45%,
+    transparent 72%
+  );
+}
+
+/* Ripple wave layer: brightens the cap with a colored glow, fading out.
+   Purely GPU-friendly props (opacity + box-shadow). The per-key delay
+   comes from React via --wave-delay. */
+.keyGlow {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  box-shadow: none;
+  will-change: opacity, box-shadow;
+  animation: keyWaveGlow 700ms cubic-bezier(0.15, 0.7, 0.25, 1) backwards;
+  animation-delay: var(--wave-delay, 0ms);
+}
+
+@keyframes keyWaveGlow {
+  0% {
+    opacity: 0;
+    box-shadow: 0 0 0 0 transparent;
+  }
+
+  12% {
+    opacity: 1;
+    box-shadow: 0 0 calc(0.5cqi + 8px) 1px var(--wave-color, #38bdf8);
+  }
+
+  45% {
+    opacity: 0.8;
+    box-shadow: 0 0 calc(0.9cqi + 16px) 2px var(--wave-color, #38bdf8);
+  }
+
+  100% {
+    opacity: 0;
+    box-shadow: 0 0 0 0 transparent;
+  }
 }
 
 .keyFront {
@@ -169,17 +231,28 @@
 }
 
 .sub {
+  position: relative;
+  z-index: 1;
   font-size: clamp(7px, 0.8cqi, 12px);
   line-height: 1;
   color: currentColor;
   opacity: 0.6;
+  text-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.35),
+    0 -1px 1px rgba(0, 0, 0, 0.3);
 }
 
 .label {
+  position: relative;
+  z-index: 1;
   font-size: clamp(9px, 1.1cqi, 15px);
   line-height: 1;
   font-weight: 700;
   letter-spacing: 0.2px;
+  /* Printed/etched legends: light line under the glyph, dark line above */
+  text-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.4),
+    0 -1px 1px rgba(0, 0, 0, 0.35);
 }
 
 @media (max-width: 640px) {
@@ -189,5 +262,13 @@
 
   .boardScattered {
     transform: rotateX(6deg);
+  }
+}
+
+/* Reduced motion: no traveling wave — the pressed key keeps its static
+   accent highlight via .keyPressed. */
+@media (prefers-reduced-motion: reduce) {
+  .keyGlow {
+    animation: none;
   }
 }

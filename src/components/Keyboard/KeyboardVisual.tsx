@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import styles from "./KeyboardVisual.module.css";
+import type { KeyboardVisualTheme } from "./switchThemes";
 
 interface KeySpec {
   code: string;
@@ -85,31 +86,51 @@ const ROWS: KeySpec[][] = [
   ],
 ];
 
-// Four-color diagonal gradient block (top-left staircase).
-// Row r of the first 4 rows gets gradient[r]; the block shrinks by
-// one key per row: 4 → 3 → 2 → 1 keys.
-const GRADIENT = [
-  { top: "#5eeaf6", bottom: "#2DD9E8", edge: "#17a8c9", legend: "#04323d" },
-  { top: "#ff6a62", bottom: "#F4433D", edge: "#c22f2a", legend: "#ffffff" },
-  { top: "#ffa03d", bottom: "#FF8A1E", edge: "#d96d10", legend: "#3a1d02" },
-  { top: "#ffe9b0", bottom: "#FCE29B", edge: "#d4b46a", legend: "#5a4212" },
-];
+// Wave tuning: delay per grid-unit of distance, and the animation duration.
+const WAVE_BASE_DELAY_MS = 26;
+const WAVE_MAX_DELAY_MS = 320;
 
-const GRADIENT_ROWS = 4; // staircase spans the first 4 rows
-const GRADIENT_SHAPE = [4, 3, 2, 1]; // keys per row, shrinking
+interface KeyGridPos {
+  r: number;
+  c: number;
+}
+
+interface WaveState {
+  id: number;
+  origin: string;
+}
 
 interface KeyboardVisualProps {
   /** When true, keys fly apart from the board (dismantle) and hover */
   scattered?: boolean;
   /** Fired when a key is clicked/tapped (code) — e.g. to play a sound */
   onKeyPress?: (code: string) => void;
+  /** Visual theme driving cap/plate/accent colors */
+  theme: KeyboardVisualTheme;
+  /** Color of the keypress ripple (falls back to theme accentColor) */
+  waveColor?: string;
 }
 
 export default function KeyboardVisual({
   scattered = false,
   onKeyPress,
+  theme,
+  waveColor,
 }: KeyboardVisualProps) {
   const [pressed, setPressed] = useState<Set<string>>(new Set());
+  const [wave, setWave] = useState<WaveState | null>(null);
+  const waveIdRef = useRef(0);
+  const reducedMotionRef = useRef(false);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    reducedMotionRef.current = mq.matches;
+    const onChange = (e: MediaQueryListEvent) => {
+      reducedMotionRef.current = e.matches;
+    };
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
 
   const press = useCallback((code: string) => {
     setPressed((prev) => {
@@ -134,6 +155,10 @@ export default function KeyboardVisual({
       // Prevent Space / arrows from scrolling the page while demoing
       if (e.code === "Space" || e.code.startsWith("Arrow")) e.preventDefault();
       press(e.code);
+      // Ripple wave on physical keydown only (not mouse clicks on screen)
+      if (!reducedMotionRef.current) {
+        setWave({ id: ++waveIdRef.current, origin: e.code });
+      }
     };
     const handleUp = (e: KeyboardEvent) => release(e.code);
     const handleBlur = () => setPressed(new Set());
@@ -147,6 +172,34 @@ export default function KeyboardVisual({
       window.removeEventListener("blur", handleBlur);
     };
   }, [press, release]);
+
+  // Per-key grid coordinates (row + column center in 1u units) for the wave
+  const gridPos = useMemo(() => {
+    const pos: Record<string, KeyGridPos> = {};
+    for (let r = 0; r < ROWS.length; r++) {
+      let col = 0;
+      for (const k of ROWS[r]) {
+        const w = k.w ?? 1;
+        pos[k.code] = { r, c: col + w / 2 };
+        col += w + 0.3;
+      }
+    }
+    return pos;
+  }, []);
+
+  // Delay (ms) of each key relative to the wave origin; 0 = pressed key
+  const waveDelays = useMemo(() => {
+    if (!wave) return null;
+    const origin = gridPos[wave.origin];
+    if (!origin) return null;
+    const delays: Record<string, number> = {};
+    for (const [code, p] of Object.entries(gridPos)) {
+      // Vertical pitch is ~1.15u (row height + gap) relative to horizontal 1u
+      const dist = Math.hypot((p.r - origin.r) * 1.15, p.c - origin.c);
+      delays[code] = Math.min(dist * WAVE_BASE_DELAY_MS, WAVE_MAX_DELAY_MS);
+    }
+    return delays;
+  }, [wave, gridPos]);
 
   // Per-key scatter offsets (radial explosion from board center), computed once
   const scatterVars = useMemo(() => {
@@ -175,27 +228,32 @@ export default function KeyboardVisual({
     return vars;
   }, []);
 
-  const capVars = (r: number, c: number): React.CSSProperties => {
-    // Gradient staircase: row r, key index c
-    if (r < GRADIENT_ROWS && c < GRADIENT_SHAPE[r]) {
-      const g = GRADIENT[r];
-      return {
-        "--t1": g.top,
-        "--t2": g.bottom,
-        "--edge": g.edge,
-        "--legend": g.legend,
-      } as React.CSSProperties;
-    }
-    return {}; // mauve default from CSS
+  // Theme colors for a key; Oreo-style themes alternate cap colors by index
+  const capVars = (k: KeySpec, r: number, c: number): React.CSSProperties => {
+    const alt = !!theme.altKeycapGradient && (r + c) % 2 === 1;
+    return {
+      "--t1": alt ? theme.altKeycapGradient![0] : theme.keycapGradient[0],
+      "--t2": alt ? theme.altKeycapGradient![1] : theme.keycapGradient[1],
+      "--edge": alt ? theme.altKeycapBase ?? theme.keycapBase : theme.keycapBase,
+      "--legend": alt ? theme.altLegendColor ?? theme.legendColor : theme.legendColor,
+    } as React.CSSProperties;
   };
 
   return (
     <div className={styles.scene}>
-      <div className={`${styles.board} ${scattered ? styles.boardScattered : ""}`}>
+      <div
+        className={`${styles.board} ${scattered ? styles.boardScattered : ""}`}
+        style={{
+          "--plate": theme.plateColor,
+          "--accent": theme.accentColor,
+          "--wave-color": waveColor ?? theme.accentColor,
+        } as React.CSSProperties}
+      >
         {ROWS.map((row, r) => (
           <div key={r} className={styles.row}>
             {row.map((k, c) => {
               const isPressed = pressed.has(k.code);
+              const delay = waveDelays?.[k.code];
               return (
                 <div
                   key={k.code}
@@ -203,7 +261,7 @@ export default function KeyboardVisual({
                   className={`${styles.key} ${isPressed ? styles.keyPressed : ""}`}
                   style={{
                     flexGrow: k.w ?? 1,
-                    ...capVars(r, c),
+                    ...capVars(k, r, c),
                     ...scatterVars[k.code],
                   }}
                   onPointerDown={(e) => {
@@ -216,6 +274,13 @@ export default function KeyboardVisual({
                 >
                   <div className={styles.keyFront} />
                   <div className={styles.keyTop}>
+                    {delay !== undefined && (
+                      <div
+                        key={wave!.id}
+                        className={styles.keyGlow}
+                        style={{ "--wave-delay": `${delay}ms` } as React.CSSProperties}
+                      />
+                    )}
                     {k.sub && <span className={styles.sub}>{k.sub}</span>}
                     {k.label && <span className={styles.label}>{k.label}</span>}
                   </div>

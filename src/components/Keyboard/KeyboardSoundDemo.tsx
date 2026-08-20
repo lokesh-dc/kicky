@@ -3,18 +3,23 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useKeyboardSound } from "./useKeyboardSound";
 import KeyboardVisual from "./KeyboardVisual";
+import { SWITCH_THEMES, getTheme } from "./switchThemes";
 
 interface PackDef {
   path: string;
   label: string;
+  themeId: string;
 }
 
 const AVAILABLE_PACKS: PackDef[] = [
-  { path: "/soundpacks/cherrymx-blue-abs", label: "Cherry MX Blue ABS" },
-  { path: "/soundpacks/cherrymx-blue-abs-2", label: "Cherry MX Blue ABS 2" },
-  { path: "/soundpacks/eg-oreo", label: "EG Oreo" },
-  { path: "/soundpacks/nk-cream", label: "NK Cream" },
+  { path: "/soundpacks/cherrymx-blue-abs", label: "Cherry MX Blue ABS", themeId: "cherry-blue" },
+  { path: "/soundpacks/cherrymx-blue-abs-2", label: "Cherry MX Blue ABS 2", themeId: "cherry-blue" },
+  { path: "/soundpacks/eg-oreo", label: "EG Oreo", themeId: "eg-oreo" },
+  { path: "/soundpacks/nk-cream", label: "NK Cream", themeId: "nk-cream" },
 ];
+
+const LS_VISUAL_THEME = "klicky-visual-theme";
+const LS_WAVE_COLOR = "klicky-wave-color";
 
 const QUOTES = [
   "The quick brown fox jumps over the lazy dog.",
@@ -43,6 +48,12 @@ export default function KeyboardSoundDemo() {
   const [startTime, setStartTime] = useState<number | null>(null);
   const [wpm, setWpm] = useState(0);
 
+  // Visual theme: null = "Auto" (follows the sound profile). Once the user
+  // picks a theme explicitly it stays decoupled from the sound profile.
+  const [visualThemeId, setVisualThemeId] = useState<string | null>(null);
+  // Wave color: null = follow the theme's accentColor
+  const [waveColor, setWaveColor] = useState<string | null>(null);
+
   const [volumeOpen, setVolumeOpen] = useState(false);
   const volumeRef = useRef<HTMLDivElement>(null);
 
@@ -56,6 +67,31 @@ export default function KeyboardSoundDemo() {
   });
 
   const selected = AVAILABLE_PACKS.find((p) => p.path === packPath)!;
+
+  // Restore persisted visual preferences (client-only effects; deferred via
+  // microtask so the initial server render stays stable for hydration)
+  useEffect(() => {
+    const savedTheme = window.localStorage.getItem(LS_VISUAL_THEME);
+    if (savedTheme && savedTheme !== "auto") {
+      queueMicrotask(() => setVisualThemeId(savedTheme));
+    }
+    const savedColor = window.localStorage.getItem(LS_WAVE_COLOR);
+    if (savedColor) {
+      queueMicrotask(() => setWaveColor(savedColor));
+    }
+  }, []);
+
+  useEffect(() => {
+    window.localStorage.setItem(LS_VISUAL_THEME, visualThemeId ?? "auto");
+  }, [visualThemeId]);
+
+  useEffect(() => {
+    if (waveColor) window.localStorage.setItem(LS_WAVE_COLOR, waveColor);
+    else window.localStorage.removeItem(LS_WAVE_COLOR);
+  }, [waveColor]);
+
+  const effectiveTheme = getTheme(visualThemeId ?? selected.themeId);
+  const effectiveWaveColor = waveColor ?? effectiveTheme.accentColor;
 
   const handlePackChange = (path: string) => {
     if (path === packPath || status !== "idle") return;
@@ -188,6 +224,52 @@ export default function KeyboardSoundDemo() {
           </select>
         </div>
 
+        <div style={styles.statusPill} title="Visual theme — independent of the sound profile">
+          <span style={styles.pillLabel}>Visual</span>
+          <select
+            value={visualThemeId ?? "auto"}
+            onChange={(e) =>
+              setVisualThemeId(e.target.value === "auto" ? null : e.target.value)
+            }
+            style={styles.packSelect}
+          >
+            <option value="auto">Auto (follow sound)</option>
+            {SWITCH_THEMES.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div style={styles.statusPill} title="Wave light color">
+          <span style={styles.pillLabel}>Wave</span>
+          <label
+            style={{
+              ...styles.colorSwatch,
+              background: effectiveWaveColor,
+            }}
+            title="Wave color"
+          >
+            <input
+              type="color"
+              value={effectiveWaveColor}
+              onChange={(e) => setWaveColor(e.target.value)}
+              style={styles.hiddenColorInput}
+              aria-label="Wave color"
+            />
+          </label>
+          {waveColor && (
+            <button
+              onClick={() => setWaveColor(null)}
+              style={styles.resetBtn}
+              title="Reset wave color to theme accent"
+            >
+              ↺
+            </button>
+          )}
+        </div>
+
         <div style={styles.headerRight} ref={volumeRef}>
           <div style={{ position: "relative" }}>
             <button
@@ -281,6 +363,8 @@ export default function KeyboardSoundDemo() {
         <KeyboardVisual
           scattered={scattered}
           onKeyPress={(code) => playCode(code, "down")}
+          theme={effectiveTheme}
+          waveColor={effectiveWaveColor}
         />
       </main>
     </div>
@@ -327,6 +411,50 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: 999,
   },
   statusDot: { width: 8, height: 8, borderRadius: "50%", flexShrink: 0 },
+  pillLabel: {
+    fontSize: 10,
+    fontWeight: 700,
+    letterSpacing: "0.8px",
+    textTransform: "uppercase" as const,
+    color: "rgba(0,0,0,0.45)",
+    marginRight: 2,
+  },
+  colorSwatch: {
+    position: "relative",
+    width: 20,
+    height: 20,
+    borderRadius: "50%",
+    flexShrink: 0,
+    cursor: "pointer",
+    boxShadow:
+      "inset 0 0 0 1px rgba(0,0,0,0.18), inset 0 1px 2px rgba(255,255,255,0.35)",
+    overflow: "hidden",
+  },
+  hiddenColorInput: {
+    position: "absolute",
+    inset: 0,
+    width: "100%",
+    height: "100%",
+    opacity: 0,
+    cursor: "pointer",
+    border: "none",
+    padding: 0,
+  },
+  resetBtn: {
+    background: "transparent",
+    border: "none",
+    color: "rgba(0,0,0,0.5)",
+    fontSize: 13,
+    lineHeight: 1,
+    padding: 0,
+    cursor: "pointer",
+    width: 16,
+    height: 16,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: "50%",
+  },
   packSelect: {
     background: "transparent",
     color: "#1a1a2e",
