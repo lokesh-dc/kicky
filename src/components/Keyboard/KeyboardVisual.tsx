@@ -90,6 +90,20 @@ const ROWS: KeySpec[][] = [
 const WAVE_BASE_DELAY_MS = 26;
 const WAVE_MAX_DELAY_MS = 320;
 
+/** Relative luminance of a #rrggbb color (0 = black, 1 = white) */
+function luminance(hex: string): number {
+  const n = parseInt(hex.slice(1), 16);
+  const toLin = (c: number) => {
+    const s = c / 255;
+    return s <= 0.04045 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
+  };
+  return (
+    0.2126 * toLin((n >> 16) & 0xff) +
+    0.7152 * toLin((n >> 8) & 0xff) +
+    0.0722 * toLin(n & 0xff)
+  );
+}
+
 interface KeyGridPos {
   r: number;
   c: number;
@@ -228,15 +242,21 @@ export default function KeyboardVisual({
     return vars;
   }, []);
 
-  // Theme colors for a key; Oreo-style themes alternate cap colors by index
-  const capVars = (k: KeySpec, r: number, c: number): React.CSSProperties => {
+  // Theme colors for a key; Oreo-style themes alternate cap colors by index.
+  // lightCap = the cap's top face is a light color (white/cream), which gets
+  // the engraved dark-under-legend treatment.
+  const capVars = (k: KeySpec, r: number, c: number) => {
     const alt = !!theme.altKeycapGradient && (r + c) % 2 === 1;
+    const top = alt ? theme.altKeycapGradient![0] : theme.keycapGradient[0];
     return {
-      "--t1": alt ? theme.altKeycapGradient![0] : theme.keycapGradient[0],
-      "--t2": alt ? theme.altKeycapGradient![1] : theme.keycapGradient[1],
-      "--edge": alt ? theme.altKeycapBase ?? theme.keycapBase : theme.keycapBase,
-      "--legend": alt ? theme.altLegendColor ?? theme.legendColor : theme.legendColor,
-    } as React.CSSProperties;
+      light: luminance(top) >= 0.5,
+      vars: {
+        "--t1": top,
+        "--t2": alt ? theme.altKeycapGradient![1] : theme.keycapGradient[1],
+        "--edge": alt ? theme.altKeycapBase ?? theme.keycapBase : theme.keycapBase,
+        "--legend": alt ? theme.altLegendColor ?? theme.legendColor : theme.legendColor,
+      } as React.CSSProperties,
+    };
   };
 
   return (
@@ -254,6 +274,7 @@ export default function KeyboardVisual({
             {row.map((k, c) => {
               const isPressed = pressed.has(k.code);
               const delay = waveDelays?.[k.code];
+              const cap = capVars(k, r, c);
               return (
                 <div
                   key={k.code}
@@ -261,7 +282,7 @@ export default function KeyboardVisual({
                   className={`${styles.key} ${isPressed ? styles.keyPressed : ""}`}
                   style={{
                     flexGrow: k.w ?? 1,
-                    ...capVars(k, r, c),
+                    ...cap.vars,
                     ...scatterVars[k.code],
                   }}
                   onPointerDown={(e) => {
@@ -273,7 +294,7 @@ export default function KeyboardVisual({
                   onPointerLeave={() => release(k.code)}
                 >
                   <div className={styles.keyFront} />
-                  <div className={styles.keyTop}>
+                  <div className={`${styles.keyTop} ${cap.light ? styles.lightCap : ""}`}>
                     {delay !== undefined && (
                       <div
                         key={wave!.id}
