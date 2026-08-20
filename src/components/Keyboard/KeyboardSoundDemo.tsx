@@ -196,81 +196,86 @@ export default function KeyboardSoundDemo() {
     <div style={styles.page}>
       <header style={styles.header}>
         <div style={styles.brand}>
+          <span style={styles.brandMark} aria-hidden="true" />
           <span style={styles.brandName}>Klicky</span>
         </div>
 
-        <div style={styles.statusPill}>
-          <span
-            style={{
-              ...styles.statusDot,
-              background:
-                status === "idle"
-                  ? isReady
-                    ? "#4ade80"
-                    : "#facc15"
-                  : "#ff6b4a",
-            }}
-          />
-          <select
-            value={packPath}
-            onChange={(e) => handlePackChange(e.target.value)}
-            style={styles.packSelect}
-          >
-            {AVAILABLE_PACKS.map((p) => (
-              <option key={p.path} value={p.path}>
-                {p.label}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div style={styles.statusPill} title="Visual theme — independent of the sound profile">
-          <span style={styles.pillLabel}>Visual</span>
-          <select
-            value={visualThemeId ?? "auto"}
-            onChange={(e) =>
-              setVisualThemeId(e.target.value === "auto" ? null : e.target.value)
-            }
-            style={styles.packSelect}
-          >
-            <option value="auto">Auto (follow sound)</option>
-            {SWITCH_THEMES.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.label}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div style={styles.statusPill} title="Wave light color">
-          <span style={styles.pillLabel}>Wave</span>
-          <label
-            style={{
-              ...styles.colorSwatch,
-              background: effectiveWaveColor,
-            }}
-            title="Wave color"
-          >
-            <input
-              type="color"
-              value={effectiveWaveColor}
-              onChange={(e) => setWaveColor(e.target.value)}
-              style={styles.hiddenColorInput}
-              aria-label="Wave color"
+        <div style={styles.controls}>
+          <div style={styles.statusPill} title={error ?? undefined}>
+            <span
+              style={{
+                ...styles.statusDot,
+                background:
+                  status === "idle"
+                    ? isReady
+                      ? "#4ade80"
+                      : "#facc15"
+                    : "#ff6b4a",
+              }}
             />
-          </label>
-          {waveColor && (
-            <button
-              onClick={() => setWaveColor(null)}
-              style={styles.resetBtn}
-              title="Reset wave color to theme accent"
+            <select
+              value={packPath}
+              onChange={(e) => handlePackChange(e.target.value)}
+              style={styles.packSelect}
             >
-              ↺
-            </button>
-          )}
-        </div>
+              {AVAILABLE_PACKS.map((p) => (
+                <option key={p.path} value={p.path}>
+                  {p.label}
+                </option>
+              ))}
+            </select>
+          </div>
 
-        <div style={styles.headerRight} ref={volumeRef}>
+          <div
+            style={styles.statusPill}
+            title="Visual theme, independent of the sound profile"
+          >
+            <span style={styles.pillLabel}>Visual</span>
+            <select
+              value={visualThemeId ?? "auto"}
+              onChange={(e) =>
+                setVisualThemeId(e.target.value === "auto" ? null : e.target.value)
+              }
+              style={styles.packSelect}
+            >
+              <option value="auto">Auto (follow sound)</option>
+              {SWITCH_THEMES.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div style={styles.statusPill} title="Wave light color">
+            <span style={styles.pillLabel}>Wave</span>
+            <label
+              style={{
+                ...styles.colorSwatch,
+                background: effectiveWaveColor,
+              }}
+              title="Wave color"
+            >
+              <input
+                type="color"
+                value={effectiveWaveColor}
+                onChange={(e) => setWaveColor(e.target.value)}
+                style={styles.hiddenColorInput}
+                aria-label="Wave color"
+              />
+            </label>
+            {waveColor && (
+              <button
+                onClick={() => setWaveColor(null)}
+                style={styles.resetBtn}
+                title="Reset wave color to theme accent"
+              >
+                ↺
+              </button>
+            )}
+          </div>
+
+          <div style={styles.headerRight} ref={volumeRef}>
           <div style={{ position: "relative" }}>
             <button
               onClick={() => setVolumeOpen((o) => !o)}
@@ -278,19 +283,19 @@ export default function KeyboardSoundDemo() {
               title="Volume"
             >
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M3 9v6h4l5 5V4L7 9H3z" fill="#1a1a2e" />
+                <path d="M3 9v6h4l5 5V4L7 9H3z" fill="#f4f4f5" />
                 {volume === 0 ? (
                   <>
-                    <line x1="23" y1="9" x2="17" y2="15" stroke="#1a1a2e" strokeWidth="2" strokeLinecap="round" />
-                    <line x1="17" y1="9" x2="23" y2="15" stroke="#1a1a2e" strokeWidth="2" strokeLinecap="round" />
+                    <line x1="23" y1="9" x2="17" y2="15" stroke="#f4f4f5" strokeWidth="2" strokeLinecap="round" />
+                    <line x1="17" y1="9" x2="23" y2="15" stroke="#f4f4f5" strokeWidth="2" strokeLinecap="round" />
                   </>
                 ) : (
                   <>
                     {volume > 0.15 && (
-                      <path d="M14.5 8.5a5 5 0 0 1 0 7" stroke="#1a1a2e" strokeWidth="2" strokeLinecap="round" />
+                      <path d="M14.5 8.5a5 5 0 0 1 0 7" stroke="#f4f4f5" strokeWidth="2" strokeLinecap="round" />
                     )}
                     {volume > 0.5 && (
-                      <path d="M17.5 5.5a10 10 0 0 1 0 13" stroke="#1a1a2e" strokeWidth="2" strokeLinecap="round" />
+                      <path d="M17.5 5.5a10 10 0 0 1 0 13" stroke="#f4f4f5" strokeWidth="2" strokeLinecap="round" />
                     )}
                   </>
                 )}
@@ -313,10 +318,11 @@ export default function KeyboardSoundDemo() {
             )}
           </div>
         </div>
+        </div>
       </header>
 
       <div style={styles.typingArea}>
-        <div style={styles.quoteBox}>
+        <div className="rise-in" style={styles.quoteBox}>
           {quote.split("").map((char, i) => (
             <span
               key={i}
@@ -325,13 +331,9 @@ export default function KeyboardSoundDemo() {
                 color:
                   i < typedCount
                     ? quote[i] === char
-                      ? "#1a1a2e"
+                      ? "#ffffff"
                       : "#ff6b4a"
-                    : "rgba(0,0,0,0.2)",
-                textShadow:
-                  i < typedCount && quote[i] === char
-                    ? "none"
-                    : "none",
+                    : "rgba(255, 255, 255, 0.32)",
               }}
             >
               {char === " " ? "\u00A0" : char}
@@ -346,7 +348,7 @@ export default function KeyboardSoundDemo() {
             <strong>{startTime ? liveWpm : 0}</strong>
           </span>
           {wpm > 0 && typedCount >= quote.length && (
-            <span style={{ ...styles.stat, color: "#16a34a" }}>
+            <span style={{ ...styles.stat, color: "#4ade80" }}>
               Done! {wpm} WPM
             </span>
           )}
@@ -359,7 +361,7 @@ export default function KeyboardSoundDemo() {
         </div>
       </div>
 
-      <main style={styles.stage}>
+      <main className="rise-in-delayed" style={styles.stage}>
         <KeyboardVisual
           scattered={scattered}
           onKeyPress={(code) => playCode(code, "down")}
@@ -367,17 +369,19 @@ export default function KeyboardSoundDemo() {
           waveColor={effectiveWaveColor}
         />
       </main>
+      <p style={styles.hint}>Start typing to hear the switches and light up the board.</p>
     </div>
   );
 }
 
 const styles: Record<string, React.CSSProperties> = {
   page: {
-    minHeight: "100vh",
-    background: "#ffffff",
-    color: "#1a1a2e",
-    fontFamily: "'Inter', system-ui, sans-serif",
-    padding: "20px clamp(16px, 4vw, 64px) 64px",
+    minHeight: "100dvh",
+    background:
+      "radial-gradient(1100px 520px at 50% -8%, rgba(255, 107, 74, 0.07), transparent 62%), #0b0b10",
+    color: "#f4f4f5",
+    fontFamily: "var(--font-geist-sans), system-ui, sans-serif",
+    padding: "20px clamp(16px, 4vw, 64px) 48px",
     display: "flex",
     flexDirection: "column",
   },
@@ -385,28 +389,36 @@ const styles: Record<string, React.CSSProperties> = {
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
-    gap: 16,
+    flexWrap: "wrap" as const,
+    gap: 12,
     paddingBottom: 18,
-    borderBottom: "1px solid rgba(0, 0, 0, 0.1)",
+    borderBottom: "1px solid rgba(255, 255, 255, 0.08)",
     position: "relative" as const,
     zIndex: 50,
   },
   brand: { display: "flex", alignItems: "center", gap: 10 },
-  brandLogo: { fontSize: 26 },
+  brandMark: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    background: "linear-gradient(180deg, #2a2a31, #1c1c22)",
+    border: "1px solid rgba(255, 255, 255, 0.14)",
+    boxShadow: "inset 0 1px 0 rgba(255, 255, 255, 0.12)",
+    position: "relative" as const,
+  },
   brandName: {
     fontSize: 24,
     fontWeight: 800,
     letterSpacing: "-0.5px",
-    background: "linear-gradient(135deg, #ff6b4a, #c4b5fd)",
-    WebkitBackgroundClip: "text",
-    WebkitTextFillColor: "transparent",
+    color: "#fafafa",
   },
+  controls: { display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" as const },
   statusPill: {
     display: "flex",
     alignItems: "center",
     gap: 8,
-    background: "rgba(0, 0, 0, 0.05)",
-    border: "1px solid rgba(0, 0, 0, 0.1)",
+    background: "rgba(255, 255, 255, 0.05)",
+    border: "1px solid rgba(255, 255, 255, 0.09)",
     padding: "7px 14px",
     borderRadius: 999,
   },
@@ -416,7 +428,7 @@ const styles: Record<string, React.CSSProperties> = {
     fontWeight: 700,
     letterSpacing: "0.8px",
     textTransform: "uppercase" as const,
-    color: "rgba(0,0,0,0.45)",
+    color: "rgba(255, 255, 255, 0.4)",
     marginRight: 2,
   },
   colorSwatch: {
@@ -427,7 +439,7 @@ const styles: Record<string, React.CSSProperties> = {
     flexShrink: 0,
     cursor: "pointer",
     boxShadow:
-      "inset 0 0 0 1px rgba(0,0,0,0.18), inset 0 1px 2px rgba(255,255,255,0.35)",
+      "inset 0 0 0 1px rgba(255,255,255,0.25), inset 0 1px 2px rgba(255,255,255,0.35)",
     overflow: "hidden",
   },
   hiddenColorInput: {
@@ -443,7 +455,7 @@ const styles: Record<string, React.CSSProperties> = {
   resetBtn: {
     background: "transparent",
     border: "none",
-    color: "rgba(0,0,0,0.5)",
+    color: "rgba(255, 255, 255, 0.45)",
     fontSize: 13,
     lineHeight: 1,
     padding: 0,
@@ -457,7 +469,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   packSelect: {
     background: "transparent",
-    color: "#1a1a2e",
+    color: "#f4f4f5",
     border: "none",
     borderRadius: 0,
     padding: "0 16px 0 0",
@@ -467,18 +479,18 @@ const styles: Record<string, React.CSSProperties> = {
     outline: "none",
     appearance: "none" as const,
     WebkitAppearance: "none" as const,
-    backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%231a1a2e'/%3E%3C/svg%3E")`,
+    backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23f4f4f5'/%3E%3C/svg%3E")`,
     backgroundRepeat: "no-repeat",
     backgroundPosition: "right 0 center",
   },
   headerRight: { display: "flex", alignItems: "center", gap: 8 },
   iconBtn: {
-    background: "rgba(0, 0, 0, 0.05)",
-    border: "1px solid rgba(0, 0, 0, 0.1)",
-    color: "#1a1a2e",
+    background: "rgba(255, 255, 255, 0.05)",
+    border: "1px solid rgba(255, 255, 255, 0.09)",
+    color: "#f4f4f5",
     width: 40,
     height: 40,
-    borderRadius: 12,
+    borderRadius: 999,
     cursor: "pointer",
     display: "flex",
     alignItems: "center",
@@ -489,8 +501,8 @@ const styles: Record<string, React.CSSProperties> = {
     position: "absolute",
     top: "calc(100% + 10px)",
     right: -8,
-    background: "#ffffff",
-    border: "1px solid rgba(0, 0, 0, 0.1)",
+    background: "#15151b",
+    border: "1px solid rgba(255, 255, 255, 0.1)",
     borderRadius: 16,
     padding: "20px 16px",
     display: "flex",
@@ -498,7 +510,7 @@ const styles: Record<string, React.CSSProperties> = {
     alignItems: "center",
     gap: 10,
     zIndex: 200,
-    boxShadow: "0 8px 32px rgba(0,0,0,0.12)",
+    boxShadow: "0 8px 32px rgba(0, 0, 0, 0.5)",
   },
   volumeSliderTrack: {
     height: 140,
@@ -529,14 +541,15 @@ const styles: Record<string, React.CSSProperties> = {
     margin: "0 auto",
   },
   quoteBox: {
-    fontFamily: "'Geist Mono', 'Fira Code', monospace",
+    fontFamily: "var(--font-geist-mono), ui-monospace, monospace",
     fontSize: "clamp(18px, 2.5vw, 28px)",
     lineHeight: 1.8,
     letterSpacing: "1px",
     padding: "24px 32px",
-    background: "rgba(0, 0, 0, 0.03)",
-    border: "1px solid rgba(0, 0, 0, 0.08)",
-    borderRadius: 20,
+    background: "rgba(255, 255, 255, 0.04)",
+    border: "1px solid rgba(255, 255, 255, 0.09)",
+    borderRadius: 16,
+    boxShadow: "inset 0 1px 0 rgba(255, 255, 255, 0.06)",
     textAlign: "center" as const,
     maxWidth: "100%",
     wordBreak: "break-word" as const,
@@ -547,23 +560,24 @@ const styles: Record<string, React.CSSProperties> = {
     justifyContent: "center",
   },
   quoteChar: {
-    transition: "color 0.15s, text-shadow 0.15s, background 0.15s",
+    transition: "color 0.15s, background 0.15s",
     borderRadius: 4,
     padding: "2px 1px",
   },
   cursor: {
     display: "inline-block",
     color: "#ff6b4a",
-    fontWeight: 300,
+    fontWeight: 400,
     animation: "blink 1s step-end infinite",
     marginLeft: 2,
     fontSize: "1.1em",
+    textShadow: "0 0 8px rgba(255, 107, 74, 0.5)",
   },
   typingStats: {
     display: "flex",
     gap: 24,
     fontSize: 13,
-    color: "rgba(0,0,0,0.4)",
+    color: "rgba(255, 255, 255, 0.4)",
     fontWeight: 600,
   },
   stat: {
@@ -575,15 +589,17 @@ const styles: Record<string, React.CSSProperties> = {
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    padding: "clamp(12px, 2vh, 32px) 0",
+    padding: "clamp(12px, 2vh, 32px) 0 0",
     width: "100%",
     maxWidth: 1200,
     margin: "0 auto",
+    position: "relative" as const,
   },
   hint: {
     textAlign: "center",
-    color: "rgba(255, 255, 255, 0.55)",
+    color: "rgba(255, 255, 255, 0.45)",
     fontSize: 13,
-    marginTop: 4,
+    marginTop: 20,
+    fontFamily: "var(--font-geist-mono), ui-monospace, monospace",
   },
 };

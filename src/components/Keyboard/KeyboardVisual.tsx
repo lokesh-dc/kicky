@@ -103,7 +103,7 @@ interface WaveState {
 interface KeyboardVisualProps {
   /** When true, keys fly apart from the board (dismantle) and hover */
   scattered?: boolean;
-  /** Fired when a key is clicked/tapped (code) — e.g. to play a sound */
+  /** Fired when a key is clicked/tapped (code), e.g. to play a sound */
   onKeyPress?: (code: string) => void;
   /** Visual theme driving cap/plate/accent colors */
   theme: KeyboardVisualTheme;

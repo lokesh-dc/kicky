@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Klicky — Mechanical Keyboard Sound Demo",
+  title: "Klicky - Mechanical Keyboard Sound Demo",
   description:
     "Real mechanical keyboard samples playing in your browser. Type anywhere and hear the clicks.",
 };
