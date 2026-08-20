@@ -196,19 +196,19 @@ export default function KeyboardSoundDemo() {
               title="Volume"
             >
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M3 9v6h4l5 5V4L7 9H3z" fill="white" />
+                <path d="M3 9v6h4l5 5V4L7 9H3z" fill="#1a1a2e" />
                 {volume === 0 ? (
                   <>
-                    <line x1="23" y1="9" x2="17" y2="15" stroke="white" strokeWidth="2" strokeLinecap="round" />
-                    <line x1="17" y1="9" x2="23" y2="15" stroke="white" strokeWidth="2" strokeLinecap="round" />
+                    <line x1="23" y1="9" x2="17" y2="15" stroke="#1a1a2e" strokeWidth="2" strokeLinecap="round" />
+                    <line x1="17" y1="9" x2="23" y2="15" stroke="#1a1a2e" strokeWidth="2" strokeLinecap="round" />
                   </>
                 ) : (
                   <>
                     {volume > 0.15 && (
-                      <path d="M14.5 8.5a5 5 0 0 1 0 7" stroke="white" strokeWidth="2" strokeLinecap="round" />
+                      <path d="M14.5 8.5a5 5 0 0 1 0 7" stroke="#1a1a2e" strokeWidth="2" strokeLinecap="round" />
                     )}
                     {volume > 0.5 && (
-                      <path d="M17.5 5.5a10 10 0 0 1 0 13" stroke="white" strokeWidth="2" strokeLinecap="round" />
+                      <path d="M17.5 5.5a10 10 0 0 1 0 13" stroke="#1a1a2e" strokeWidth="2" strokeLinecap="round" />
                     )}
                   </>
                 )}
@@ -243,12 +243,12 @@ export default function KeyboardSoundDemo() {
                 color:
                   i < typedCount
                     ? quote[i] === char
-                      ? "#ffffff"
+                      ? "#1a1a2e"
                       : "#ff6b4a"
-                    : "rgba(255,255,255,0.25)",
+                    : "rgba(0,0,0,0.2)",
                 textShadow:
                   i < typedCount && quote[i] === char
-                    ? "0 0 8px rgba(255,255,255,0.3)"
+                    ? "none"
                     : "none",
               }}
             >
@@ -264,7 +264,7 @@ export default function KeyboardSoundDemo() {
             <strong>{startTime ? liveWpm : 0}</strong>
           </span>
           {wpm > 0 && typedCount >= quote.length && (
-            <span style={{ ...styles.stat, color: "#4ade80" }}>
+            <span style={{ ...styles.stat, color: "#16a34a" }}>
               Done! {wpm} WPM
             </span>
           )}
@@ -290,9 +290,8 @@ export default function KeyboardSoundDemo() {
 const styles: Record<string, React.CSSProperties> = {
   page: {
     minHeight: "100vh",
-    background:
-      "radial-gradient(ellipse at 12% 100%, rgba(255, 0, 180, 0.28), transparent 55%), linear-gradient(135deg, #3f7ca0 0%, #5b3e8f 48%, #1b1233 100%)",
-    color: "#e2e8f0",
+    background: "#ffffff",
+    color: "#1a1a2e",
     fontFamily: "'Inter', system-ui, sans-serif",
     padding: "20px clamp(16px, 4vw, 64px) 64px",
     display: "flex",
@@ -304,7 +303,7 @@ const styles: Record<string, React.CSSProperties> = {
     justifyContent: "space-between",
     gap: 16,
     paddingBottom: 18,
-    borderBottom: "1px solid rgba(255, 255, 255, 0.12)",
+    borderBottom: "1px solid rgba(0, 0, 0, 0.1)",
     position: "relative" as const,
     zIndex: 50,
   },
@@ -314,7 +313,7 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: 24,
     fontWeight: 800,
     letterSpacing: "-0.5px",
-    background: "linear-gradient(135deg, #ffb3d9, #c4b5fd)",
+    background: "linear-gradient(135deg, #ff6b4a, #c4b5fd)",
     WebkitBackgroundClip: "text",
     WebkitTextFillColor: "transparent",
   },
@@ -322,15 +321,15 @@ const styles: Record<string, React.CSSProperties> = {
     display: "flex",
     alignItems: "center",
     gap: 8,
-    background: "rgba(255, 255, 255, 0.08)",
-    border: "1px solid rgba(255, 255, 255, 0.15)",
+    background: "rgba(0, 0, 0, 0.05)",
+    border: "1px solid rgba(0, 0, 0, 0.1)",
     padding: "7px 14px",
     borderRadius: 999,
   },
   statusDot: { width: 8, height: 8, borderRadius: "50%", flexShrink: 0 },
   packSelect: {
     background: "transparent",
-    color: "#e2e8f0",
+    color: "#1a1a2e",
     border: "none",
     borderRadius: 0,
     padding: "0 16px 0 0",
@@ -340,15 +339,15 @@ const styles: Record<string, React.CSSProperties> = {
     outline: "none",
     appearance: "none" as const,
     WebkitAppearance: "none" as const,
-    backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23e2e8f0'/%3E%3C/svg%3E")`,
+    backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%231a1a2e'/%3E%3C/svg%3E")`,
     backgroundRepeat: "no-repeat",
     backgroundPosition: "right 0 center",
   },
   headerRight: { display: "flex", alignItems: "center", gap: 8 },
   iconBtn: {
-    background: "rgba(255, 255, 255, 0.08)",
-    border: "1px solid rgba(255, 255, 255, 0.15)",
-    color: "#fff",
+    background: "rgba(0, 0, 0, 0.05)",
+    border: "1px solid rgba(0, 0, 0, 0.1)",
+    color: "#1a1a2e",
     width: 40,
     height: 40,
     borderRadius: 12,
@@ -362,17 +361,16 @@ const styles: Record<string, React.CSSProperties> = {
     position: "absolute",
     top: "calc(100% + 10px)",
     right: -8,
-    background: "rgba(20, 12, 40, 0.97)",
-    border: "1px solid rgba(255, 255, 255, 0.2)",
+    background: "#ffffff",
+    border: "1px solid rgba(0, 0, 0, 0.1)",
     borderRadius: 16,
     padding: "20px 16px",
     display: "flex",
     flexDirection: "column",
     alignItems: "center",
     gap: 10,
-    backdropFilter: "blur(12px)",
     zIndex: 200,
-    boxShadow: "0 8px 32px rgba(0,0,0,0.6)",
+    boxShadow: "0 8px 32px rgba(0,0,0,0.12)",
   },
   volumeSliderTrack: {
     height: 140,
@@ -408,8 +406,8 @@ const styles: Record<string, React.CSSProperties> = {
     lineHeight: 1.8,
     letterSpacing: "1px",
     padding: "24px 32px",
-    background: "rgba(255, 255, 255, 0.04)",
-    border: "1px solid rgba(255, 255, 255, 0.1)",
+    background: "rgba(0, 0, 0, 0.03)",
+    border: "1px solid rgba(0, 0, 0, 0.08)",
     borderRadius: 20,
     textAlign: "center" as const,
     maxWidth: "100%",
@@ -437,7 +435,7 @@ const styles: Record<string, React.CSSProperties> = {
     display: "flex",
     gap: 24,
     fontSize: 13,
-    color: "rgba(255,255,255,0.5)",
+    color: "rgba(0,0,0,0.4)",
     fontWeight: 600,
   },
   stat: {
